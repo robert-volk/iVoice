@@ -17,17 +17,19 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks | grep -i ios || true
 
-      - name: Install XcodeGen
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
-          HOMEBREW_NO_INSTALL_CLEANUP: "1"
-          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
+      - name: Install XcodeGen (from official release, no Homebrew)
         run: |
-          brew install xcodegen
-          xcodegen --version
+          set -euo pipefail
+          curl -fSL -o xcodegen.zip \
+            https://github.com/yonaskolb/XcodeGen/releases/latest/download/xcodegen.zip
+          unzip -q xcodegen.zip -d xcodegen-dist
+          XG_BIN="$(find xcodegen-dist -type f -name xcodegen -path '*/bin/*' | head -1)"
+          echo "Found XcodeGen at: $XG_BIN"
+          "$XG_BIN" --version
+          echo "XCODEGEN_BIN=$XG_BIN" >> "$GITHUB_ENV"
 
       - name: Generate Xcode project
-        run: xcodegen generate
+        run: "$XCODEGEN_BIN" generate --spec project.yml
 
       - name: List schemes
         run: xcodebuild -list -project iVoice.xcodeproj
