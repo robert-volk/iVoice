@@ -55,7 +55,7 @@ struct OnDeviceVoiceProvider: VoiceProvider {
     private static func qualityRank(_ a: AVSpeechSynthesisVoice, _ b: AVSpeechSynthesisVoice) -> Bool {
         rank(a.quality) > rank(b.quality)
     }
-    private static func rank(_ q: AVSpeechSynthesisVoice.Quality) -> Int {
+    private static func rank(_ q: AVSpeechSynthesisVoiceQuality) -> Int {
         switch q {
         case .premium: return 3
         case .enhanced: return 2
