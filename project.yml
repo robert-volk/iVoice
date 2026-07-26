@@ -15,6 +15,16 @@ settings:
     CODE_SIGNING_REQUIRED: "NO"
     CODE_SIGN_IDENTITY: ""
 
+schemes:
+  iVoice:
+    build:
+      targets:
+        iVoice: all
+    run:
+      config: Release
+    archive:
+      config: Release
+
 targets:
   iVoice:
     type: application
