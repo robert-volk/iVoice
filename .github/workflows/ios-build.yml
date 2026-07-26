@@ -29,7 +29,8 @@ jobs:
           echo "XCODEGEN_BIN=$XG_BIN" >> "$GITHUB_ENV"
 
       - name: Generate Xcode project
-        run: "$XCODEGEN_BIN" generate --spec project.yml
+        run: |
+          "$XCODEGEN_BIN" generate --spec project.yml
 
       - name: List schemes
         run: xcodebuild -list -project iVoice.xcodeproj
