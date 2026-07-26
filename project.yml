@@ -1,0 +1,50 @@
+name: iVoice
+options:
+  bundleIdPrefix: com.robertvolk
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGN_IDENTITY: ""
+
+targets:
+  iVoice:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Sources
+    resources:
+      - path: Resources/Assets.xcassets
+    info:
+      path: Resources/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.robertvolk.ivoice
+        PRODUCT_NAME: iVoice
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_BITCODE: "NO"
+
+    # ─────────────────────────────────────────────────────────────
+    # MP3 export (optional): iOS cannot encode MP3 natively. AAC/.m4a
+    # works out of the box. To enable MP3, add a LAME (LGPL) Swift
+    # package here and set Mp3Encoder.isAvailable = true. See README.
+    #
+    # dependencies:
+    #   - package: SwiftLame
+    # packages:
+    #   SwiftLame:
+    #     url: https://github.com/<your-fork>/SwiftLame
+    #     from: 1.0.0
+    # ─────────────────────────────────────────────────────────────
