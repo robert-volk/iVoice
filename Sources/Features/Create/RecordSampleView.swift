@@ -79,9 +79,8 @@ struct RecordSampleView: View {
     }
 
     private func onAppear() {
-        // Ask for mic permission up front so the prompt appears early.
-        Task { _ = await AudioSessionManager.requestRecordPermission() }
-
+        // Mic permission is requested lazily when the user taps record — never
+        // at launch, which could wedge the UI behind a system prompt.
         guard !hasSpoken else { return }
         hasSpoken = true
         // Pause 1 second before the spoken instructions.
