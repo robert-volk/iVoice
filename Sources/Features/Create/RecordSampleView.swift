@@ -46,9 +46,9 @@ struct RecordSampleView: View {
                 .accessibilityLabel("Play spoken instructions")
             }
             Text(AppText.sampleScript)
-                .font(.body)
-                .foregroundStyle(Theme.linen)
-                .lineSpacing(4)
+                .font(.subheadline)
+                .foregroundStyle(Theme.linenMuted)
+                .lineSpacing(3)
         }
         .studioCard()
     }
