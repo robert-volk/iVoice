@@ -8,7 +8,7 @@ struct GenerateView: View {
     @StateObject private var player = AudioPlayerController()
 
     @State private var engine: NarrationEngine = .onDevice
-    @State private var voiceID: String = ""
+    @State private var selectedProfileID: String = ""
     @State private var rate: Double = 0.5
     @State private var pitch: Double = 1.0
     @State private var format: AudioFormat = .aac
@@ -16,9 +16,9 @@ struct GenerateView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                voiceSection
                 enginePicker
                 if engine == .onDevice {
-                    voicePicker
                     RatePitchSliders(rate: $rate, pitch: $pitch).studioCard()
                 } else {
                     clonedVoiceCard
@@ -28,55 +28,73 @@ struct GenerateView: View {
             }
             .padding(.vertical, 12)
         }
-        .task {
-            await vm.loadVoices()
-            configureDefaults()
+        .onAppear(perform: configureDefaults)
+    }
+
+    // MARK: Voice (the user's own recordings)
+
+    private var voiceSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Voice").font(.headline).foregroundStyle(Theme.linen)
+
+            if library.profiles.isEmpty {
+                Text("No recorded voice yet.")
+                    .font(.subheadline).foregroundStyle(Theme.linenMuted)
+                Button("Record your voice") { flow.go(to: .record) }
+                    .buttonStyle(SecondaryButtonStyle())
+            } else if library.profiles.count == 1, let only = library.profiles.first {
+                HStack(spacing: 10) {
+                    Image(systemName: "mic.fill").foregroundStyle(Theme.emerald)
+                    Text(only.name).foregroundStyle(Theme.linen)
+                    Spacer()
+                    Button("Record another") { flow.go(to: .record) }
+                        .font(.footnote).foregroundStyle(Theme.emerald)
+                }
+                .onAppear { selectedProfileID = only.id.uuidString }
+            } else {
+                Menu {
+                    ForEach(library.profiles) { profile in
+                        Button(profile.name) { selectedProfileID = profile.id.uuidString }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "mic.fill").foregroundStyle(Theme.emerald)
+                        Text(currentProfileName).foregroundStyle(Theme.linen)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down").foregroundStyle(Theme.linenMuted)
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.inkLine))
+                }
+                Button("Record another voice") { flow.go(to: .record) }
+                    .font(.footnote).foregroundStyle(Theme.emerald)
+            }
         }
+        .studioCard()
     }
 
     // MARK: Engine
 
     private var enginePicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Narration engine").font(.headline).foregroundStyle(Theme.linen)
+            Text("How to narrate").font(.headline).foregroundStyle(Theme.linen)
             Picker("Engine", selection: $engine) {
                 Text("On-device").tag(NarrationEngine.onDevice)
-                Text("ElevenLabs").tag(NarrationEngine.elevenLabs)
+                Text("My cloned voice").tag(NarrationEngine.elevenLabs)
             }
             .pickerStyle(.segmented)
             .disabled(!settings.hasElevenLabsKey)
 
-            Text(engine.subtitle)
-                .font(.footnote)
-                .foregroundStyle(engine.isClone ? Color(hex: 0xE8A13A) : Theme.linenMuted)
-
-            if !settings.hasElevenLabsKey {
-                Text("Add an ElevenLabs API key in Settings to enable real voice cloning.")
+            if engine == .onDevice {
+                Text("Plays a neutral system voice on-device — it isn't your recorded voice. To hear your own voice, turn on ElevenLabs cloning in Settings.")
                     .font(.caption).foregroundStyle(Theme.linenMuted)
             }
-        }
-        .studioCard()
-    }
 
-    private var voicePicker: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Voice").font(.headline).foregroundStyle(Theme.linen)
-            Menu {
-                ForEach(vm.onDeviceVoices) { option in
-                    Button(option.name) { voiceID = option.id }
-                }
-            } label: {
-                HStack {
-                    Text(currentVoiceName).foregroundStyle(Theme.linen)
-                    Spacer()
-                    Image(systemName: "chevron.up.chevron.down").foregroundStyle(Theme.linenMuted)
-                }
-                .padding(12)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.ink))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.inkLine))
+            if !settings.hasElevenLabsKey {
+                Text("Add an ElevenLabs API key in Settings to narrate in your recorded voice.")
+                    .font(.caption).foregroundStyle(Color(hex: 0xE8A13A))
             }
-            Text("A system voice — not a clone of your recording.")
-                .font(.caption).foregroundStyle(Theme.linenMuted)
         }
         .studioCard()
     }
@@ -85,7 +103,7 @@ struct GenerateView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Your cloned voice", systemImage: "person.wave.2.fill")
                 .font(.headline).foregroundStyle(Theme.emerald)
-            Text("iVoice will send your sample and this document to ElevenLabs to generate a narration in your cloned voice.")
+            Text("iVoice will send \(currentProfileName)'s sample and this document to ElevenLabs to narrate in your cloned voice.")
                 .font(.subheadline).foregroundStyle(Theme.linenMuted)
         }
         .studioCard()
@@ -114,7 +132,8 @@ struct GenerateView: View {
         switch vm.phase {
         case .idle:
             Button("Generate narration") { generate() }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(PrimaryButtonStyle(enabled: !library.profiles.isEmpty))
+                .disabled(library.profiles.isEmpty)
 
         case .generating(let p):
             VStack(spacing: 14) {
@@ -160,30 +179,37 @@ struct GenerateView: View {
         rate = settings.defaultRate
         pitch = settings.defaultPitch
         format = settings.defaultFormat
-        if voiceID.isEmpty {
-            voiceID = settings.selectedVoiceID ?? vm.onDeviceVoices.first?.id ?? ""
+        if selectedProfileID.isEmpty {
+            selectedProfileID = flow.profile?.id.uuidString
+                ?? settings.activeProfileID
+                ?? library.profiles.first?.id.uuidString
+                ?? ""
         }
     }
 
-    private var currentVoiceName: String {
-        vm.onDeviceVoices.first { $0.id == voiceID }?.name ?? "Default voice"
+    private var selectedProfile: VoiceProfile? {
+        library.profile(id: selectedProfileID) ?? flow.profile ?? library.profiles.first
+    }
+
+    private var currentProfileName: String {
+        selectedProfile?.name ?? "My Voice"
     }
 
     private func generate() {
-        // Remember choices as defaults.
         settings.defaultEngine = engine
         settings.defaultFormat = format
         settings.defaultRate = rate
         settings.defaultPitch = pitch
-        if engine == .onDevice { settings.selectedVoiceID = voiceID }
+        settings.activeProfileID = selectedProfile?.id.uuidString
 
-        let effectiveVoiceID = engine == .elevenLabs ? "cloned" : voiceID
+        // On-device uses a neutral system voice ("" -> default); cloud clones the profile.
+        let effectiveVoiceID = engine == .elevenLabs ? "cloned" : ""
         let text = flow.documentText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         Task {
             await vm.generate(
                 text: text,
-                profile: flow.profile,
+                profile: selectedProfile,
                 engine: engine,
                 voiceID: effectiveVoiceID,
                 rate: rate,
@@ -196,7 +222,9 @@ struct GenerateView: View {
     }
 
     private func save() {
-        let voiceName = engine == .elevenLabs ? "Cloned voice" : currentVoiceName
+        let voiceName = engine == .elevenLabs
+            ? "\(currentProfileName) (cloned)"
+            : "System voice"
         _ = vm.save(documentName: flow.documentName, engine: engine, voiceName: voiceName, library: library)
         player.stop()
         flow.newDocument()
