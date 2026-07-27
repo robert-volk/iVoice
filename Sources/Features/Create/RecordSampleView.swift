@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 struct RecordSampleView: View {
     @ObservedObject var flow: CreateFlow
@@ -96,11 +97,21 @@ struct RecordSampleView: View {
             flow.sampleTempURL = result.url
             flow.sampleDuration = result.duration
             flow.go(to: .confirm)
-        } else {
-            let granted = await AudioSessionManager.requestRecordPermission()
-            guard granted else { permissionDenied = true; return }
-            speaker.stop()
+            return
+        }
+
+        // Always silence any spoken instructions first so the record session
+        // can take over the audio hardware.
+        speaker.stop()
+
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted:
             recorder.start()
+        case .denied:
+            permissionDenied = true
+        default: // .undetermined
+            let granted = await AudioSessionManager.requestRecordPermission()
+            if granted { recorder.start() } else { permissionDenied = true }
         }
     }
 
