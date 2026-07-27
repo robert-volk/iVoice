@@ -62,9 +62,7 @@ struct RecordSampleView: View {
                 Text(timeString(recorder.elapsed))
                     .font(.footnote.monospaced()).foregroundStyle(Theme.linenMuted)
                 Spacer()
-                Text(recorder.isRecording
-                     ? (recorder.meetsMinimum ? "Good — tap to stop" : "Keep going…")
-                     : "Tap to record (15–90s)")
+                Text(recorder.isRecording ? recordingHint : "Tap to record · aim for 60–90s")
                     .font(.footnote).foregroundStyle(Theme.linenMuted)
             }
         }
@@ -112,6 +110,12 @@ struct RecordSampleView: View {
             let granted = await AudioSessionManager.requestRecordPermission()
             if granted { recorder.start() } else { permissionDenied = true }
         }
+    }
+
+    private var recordingHint: String {
+        if recorder.reachedRecommended { return "Great length — tap to stop" }
+        if recorder.meetsMinimum { return "Good — a little more is even better" }
+        return "Keep going… (aim for 60–90s)"
     }
 
     private func timeString(_ t: Double) -> String {

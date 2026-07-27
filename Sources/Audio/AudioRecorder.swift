@@ -10,8 +10,9 @@ final class AudioRecorder: NSObject, ObservableObject {
     @Published var elapsed: TimeInterval = 0
     @Published var errorMessage: String?
 
-    let minDuration: TimeInterval = 15
+    let minDuration: TimeInterval = 45
     let maxDuration: TimeInterval = 90
+    let recommendedDuration: TimeInterval = 60
 
     private var recorder: AVAudioRecorder?
     private var meterTimer: Timer?
@@ -19,6 +20,7 @@ final class AudioRecorder: NSObject, ObservableObject {
 
     var reachedMax: Bool { elapsed >= maxDuration }
     var meetsMinimum: Bool { elapsed >= minDuration }
+    var reachedRecommended: Bool { elapsed >= recommendedDuration }
 
     func start() {
         errorMessage = nil
