@@ -10,7 +10,7 @@ struct RecordSampleView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 14) {
                 scriptCard
                 meterCard
                 controls
@@ -18,7 +18,7 @@ struct RecordSampleView: View {
                     Text(error).font(.footnote).foregroundStyle(Theme.danger)
                 }
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
         }
         .onAppear(perform: onAppear)
         .onDisappear { speaker.stop() }
@@ -56,7 +56,7 @@ struct RecordSampleView: View {
     private var meterCard: some View {
         VStack(spacing: 14) {
             WaveformView(levels: recorder.levels, active: recorder.isRecording)
-                .frame(height: 96)
+                .frame(height: 60)
             LevelMeterView(level: recorder.level)
             HStack {
                 Text(timeString(recorder.elapsed))

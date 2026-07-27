@@ -9,21 +9,15 @@ enum AppText {
     When you're done, you can play it back and confirm.
     """
 
-    /// A longer, phonetically varied passage (~75–90s read aloud) for a
-    /// representative sample. More clean audio yields a noticeably better clone.
+    /// A compact, phonetically varied passage (~45–60s read aloud). Kept short so
+    /// the record button stays visible; read slowly or twice for a longer sample.
     static let sampleScript = """
-    Thank you for helping me set up my voice. I'll read this passage in my normal \
-    speaking voice, at a comfortable, steady pace, as if I were talking to a friend. \
-    The morning light came softly through the kitchen window while the kettle began \
-    to whistle. I counted five apples, three oranges, and a dozen eggs before writing \
-    out the week's grocery list. Numbers like sixteen, forty-two, and one hundred \
-    should sound natural, and so should everyday words: water, garden, music, weather, \
-    telephone, and thank you. Sometimes I ask a question, like where did the afternoon \
-    go? Other times I simply pause, take a breath, and keep reading calmly. The quick \
-    brown fox jumps over the lazy dog, and that phrase gives every letter a moment to \
-    breathe. When I speak, I try to keep my tone even — neither rushed nor sleepy — \
-    letting each sentence flow into the next. This longer sample gives the app a rich \
-    and accurate picture of how I really sound: my rhythm, my pitch, and the small \
-    details that make my voice my own. That should be more than enough to work with.
+    Thanks for helping me set up my voice. I'll read this in my normal speaking \
+    voice, at a calm, steady pace, as if I'm talking to a friend. The morning light \
+    came through the kitchen window as the kettle began to whistle. I counted five \
+    apples, three oranges, and a dozen eggs. Numbers like sixteen and forty-two should \
+    sound natural, and so should everyday words: water, garden, music, and weather. \
+    The quick brown fox jumps over the lazy dog. I keep my tone even, letting each \
+    sentence flow into the next, so the app gets a clear picture of how I really sound.
     """
 }

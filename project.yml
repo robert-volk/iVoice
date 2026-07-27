@@ -34,6 +34,11 @@ targets:
       - path: Sources
     resources:
       - path: Resources/Assets.xcassets
+      # Loose app-icon PNGs copied to the bundle root, referenced by
+      # CFBundleIconFiles in Info.plist. This legacy method reliably shows the
+      # home-screen icon for sideloaded (AltStore) builds, unlike the asset
+      # catalog app icon which wasn't being embedded.
+      - path: Resources/AppIcons
     # Use our hand-maintained Info.plist verbatim. Do NOT use XcodeGen's `info:`
     # directive here — it regenerates (overwrites) the file and strips custom keys
     # like NSMicrophoneUsageDescription, which makes iOS crash on mic access.
@@ -43,7 +48,6 @@ targets:
         PRODUCT_NAME: iVoice
         INFOPLIST_FILE: Resources/Info.plist
         GENERATE_INFOPLIST_FILE: "NO"
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_BITCODE: "NO"
