@@ -5,11 +5,11 @@ struct RecordSampleView: View {
     @StateObject private var recorder = AudioRecorder()
     @StateObject private var speaker = InstructionSpeaker()
     @State private var permissionDenied = false
+    @State private var hasSpoken = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                instructionsCard
                 scriptCard
                 meterCard
                 controls
@@ -19,39 +19,31 @@ struct RecordSampleView: View {
             }
             .padding(.vertical, 12)
         }
-        .onAppear { speaker.speak(AppText.recordInstructions) }
+        .onAppear(perform: onAppear)
         .onDisappear { speaker.stop() }
         .alert("Microphone access needed", isPresented: $permissionDenied) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Enable microphone access for iVoice in Settings to record your sample.")
+            Text("Enable microphone access for iVoice in the Settings app to record your sample.")
         }
-    }
-
-    private var instructionsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Spoken instructions", systemImage: "speaker.wave.2.fill")
-                    .font(.subheadline).foregroundStyle(Theme.emerald)
-                Spacer()
-                Button {
-                    speaker.speak(AppText.recordInstructions)
-                } label: {
-                    Image(systemName: speaker.isSpeaking ? "stop.fill" : "play.fill")
-                        .foregroundStyle(Theme.emerald)
-                }
-            }
-            Text(AppText.recordInstructions)
-                .font(.subheadline)
-                .foregroundStyle(Theme.linenMuted)
-        }
-        .studioCard()
     }
 
     private var scriptCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Read this aloud")
-                .font(.headline).foregroundStyle(Theme.linen)
+            HStack {
+                Text("Read this aloud")
+                    .font(.headline).foregroundStyle(Theme.linen)
+                Spacer()
+                // Icon-only replay of the spoken instructions (no on-screen text).
+                Button {
+                    speaker.speak(AppText.recordInstructions)
+                } label: {
+                    Image(systemName: speaker.isSpeaking ? "stop.circle" : "speaker.wave.2.circle")
+                        .font(.title2)
+                        .foregroundStyle(Theme.emerald)
+                }
+                .accessibilityLabel("Play spoken instructions")
+            }
             Text(AppText.sampleScript)
                 .font(.body)
                 .foregroundStyle(Theme.linen)
@@ -83,6 +75,19 @@ struct RecordSampleView: View {
             Task { await toggle() }
         }
         .padding(.top, 4)
+    }
+
+    private func onAppear() {
+        // Ask for mic permission up front so the prompt appears early.
+        Task { _ = await AudioSessionManager.requestRecordPermission() }
+
+        guard !hasSpoken else { return }
+        hasSpoken = true
+        // Pause 1 second before the spoken instructions.
+        Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            speaker.speak(AppText.recordInstructions)
+        }
     }
 
     private func toggle() async {

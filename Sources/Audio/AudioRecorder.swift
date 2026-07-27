@@ -39,18 +39,25 @@ final class AudioRecorder: NSObject, ObservableObject {
 
         do {
             try AudioSessionManager.configureForRecording()
+
+            guard AudioSessionManager.recordPermissionGranted else {
+                errorMessage = "Microphone permission isn't granted. Enable it for iVoice in the Settings app."
+                return
+            }
+
             let rec = try AVAudioRecorder(url: url, settings: settings)
             rec.isMeteringEnabled = true
             rec.delegate = self
+            rec.prepareToRecord()
             guard rec.record() else {
-                errorMessage = "Couldn't start recording."
+                errorMessage = "Couldn't start recording (the audio engine refused to start)."
                 return
             }
             recorder = rec
             isRecording = true
             startMetering()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Recording setup failed: \(error.localizedDescription)"
         }
     }
 
