@@ -18,11 +18,10 @@ struct GenerateView: View {
             VStack(spacing: 20) {
                 voiceSection
                 enginePicker
-                if engine == .onDevice {
-                    RatePitchSliders(rate: $rate, pitch: $pitch).studioCard()
-                } else {
+                if engine != .onDevice {
                     clonedVoiceCard
                 }
+                ratePitchSection
                 formatPicker
                 generateSection
             }
@@ -121,6 +120,22 @@ struct GenerateView: View {
         case .onDevice:
             return ""
         }
+    }
+
+    private var ratePitchSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RatePitchSliders(rate: $rate, pitch: $pitch)
+            if let caption = ratePitchCaption {
+                Text(caption).font(.caption).foregroundStyle(Theme.linenMuted)
+            }
+        }
+        .studioCard()
+    }
+
+    private var ratePitchCaption: String? {
+        engine.isClone
+            ? "\(engine.displayName) doesn't take rate/pitch directly, so these are applied to the generated audio afterward."
+            : nil
     }
 
     private var formatPicker: some View {

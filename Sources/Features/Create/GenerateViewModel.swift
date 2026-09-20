@@ -47,11 +47,26 @@ final class GenerateViewModel: ObservableObject {
                 pitch: Float(pitch)
             )
 
-            let source = try await provider.synthesize(request: request) { [weak self] p in
+            let synthesized = try await provider.synthesize(request: request) { [weak self] p in
                 Task { @MainActor in
                     // Reserve the last 15% for the export step.
-                    self?.phase = .generating(min(0.85, p * 0.85))
+                    self?.phase = .generating(min(0.80, p * 0.80))
                 }
+            }
+
+            // On-device already bakes rate/pitch into AVSpeechUtterance at synthesis
+            // time. Cloned voices don't take rate/pitch at all, so apply them here as
+            // a real post-process pitch/time-stretch pass instead.
+            let source: URL
+            if engine.isClone {
+                phase = .generating(0.85)
+                source = try await AudioPitchRateProcessor.apply(
+                    rateMultiplier: Float(rate / 0.5),
+                    pitchMultiplier: Float(pitch),
+                    to: synthesized
+                )
+            } else {
+                source = synthesized
             }
 
             phase = .generating(0.9)
