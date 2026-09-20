@@ -30,6 +30,7 @@ enum AudioPitchRateProcessor {
     private static func render(rateMultiplier: Float, pitchMultiplier: Float, sourceURL: URL) throws -> URL {
         let sourceFile = try AVAudioFile(forReading: sourceURL)
         let format = sourceFile.processingFormat
+        let sourceFrameCount = sourceFile.length
 
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
@@ -44,7 +45,17 @@ enum AudioPitchRateProcessor {
 
         try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: 4096)
         try engine.start()
-        player.scheduleFile(sourceFile, at: nil)
+
+        // A pure player-fed offline graph (no live input node) never actually
+        // reports .insufficientDataFromInputNode once the file is drained -- it
+        // just keeps emitting .success with silence forever. So termination is
+        // driven by the player's own completion signal instead, not the render
+        // status. .dataPlayedBack fires only once the scheduled audio has been
+        // pushed all the way through the render graph (not just read from disk).
+        let finished = CompletionFlag()
+        player.scheduleFile(sourceFile, at: nil, completionCallbackType: .dataPlayedBack) { _ in
+            finished.set()
+        }
         player.play()
 
         let outputURL = FileManager.default.temporaryDirectory
@@ -56,14 +67,25 @@ enum AudioPitchRateProcessor {
             throw AudioPitchRateError.processingFailed
         }
 
-        renderLoop: while true {
+        // Expected output length shrinks/grows with rate (rate=2.0 -> half the
+        // frames). Add slack for the time-pitch unit's internal latency/tail.
+        let expectedOutputFrames = Double(sourceFrameCount) / Double(timePitch.rate)
+        let maxFrames = AVAudioFramePosition(expectedOutputFrames * 1.5) + AVAudioFramePosition(format.sampleRate * 2)
+        var framesRendered: AVAudioFramePosition = 0
+
+        // Absolute backstop independent of frame progress: .cannotDoInCurrentContext
+        // retries via `continue` don't advance framesRendered, so a persistent stall
+        // there wouldn't be caught by the frame cap alone. This guarantees the loop
+        // can never hang indefinitely no matter which status keeps coming back.
+        let deadline = Date().addingTimeInterval(60)
+
+        renderLoop: while !finished.isSet && framesRendered < maxFrames && Date() < deadline {
             let status = try engine.renderOffline(engine.manualRenderingMaximumFrameCount, to: buffer)
             switch status {
             case .success:
                 try outputFile.write(from: buffer)
+                framesRendered += AVAudioFramePosition(buffer.frameLength)
             case .insufficientDataFromInputNode:
-                // Player has no more scheduled audio to give us -- everything real
-                // was already flushed via the .success branch above. Done.
                 break renderLoop
             case .cannotDoInCurrentContext:
                 continue renderLoop
@@ -75,6 +97,26 @@ enum AudioPitchRateProcessor {
         }
 
         engine.stop()
+
+        guard framesRendered > 0 else {
+            throw AudioPitchRateError.processingFailed
+        }
         return outputURL
+    }
+}
+
+/// Thread-safe completion flag: AVAudioPlayerNode's completion handler fires on
+/// an internal audio thread, not whichever thread is running the render loop.
+private final class CompletionFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+
+    func set() {
+        lock.lock(); done = true; lock.unlock()
+    }
+
+    var isSet: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return done
     }
 }
