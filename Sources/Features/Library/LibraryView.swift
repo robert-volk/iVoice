@@ -31,12 +31,19 @@ struct LibraryView: View {
                         if !library.profiles.isEmpty {
                             Section {
                                 ForEach(library.profiles) { profile in
-                                    VoiceProfileRow(profile: profile)
-                                        .listRowBackground(Theme.inkElevated)
+                                    NavigationLink {
+                                        VoiceProfileDetailView(profile: profile)
+                                    } label: {
+                                        VoiceProfileRow(profile: profile)
+                                    }
+                                    .listRowBackground(Theme.inkElevated)
                                 }
                                 .onDelete(perform: deleteProfiles)
                             } header: {
                                 Text("Voice profiles").foregroundStyle(Theme.linenMuted)
+                            } footer: {
+                                Text("Tap a voice to listen to the raw recording — useful for comparing against a generated narration.")
+                                    .foregroundStyle(Theme.linenMuted)
                             }
                         }
                     }
@@ -108,9 +115,6 @@ struct VoiceProfileRow: View {
             Spacer()
             if settings.activeProfileID == profile.id.uuidString {
                 Text("Active").font(.caption).foregroundStyle(Theme.emerald)
-            } else {
-                Button("Use") { settings.activeProfileID = profile.id.uuidString }
-                    .font(.caption).foregroundStyle(Theme.emerald)
             }
         }
         .padding(.vertical, 4)
