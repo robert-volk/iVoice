@@ -8,12 +8,18 @@ struct SettingsView: View {
     @State private var testResult: String?
     @State private var testOK = false
 
+    @State private var coquiURLField = ""
+    @State private var coquiTesting = false
+    @State private var coquiTestResult: String?
+    @State private var coquiTestOK = false
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Theme.ink.ignoresSafeArea()
                 Form {
                     elevenLabsSection
+                    coquiSection
                     defaultsSection
                     aboutSection
                 }
@@ -22,7 +28,10 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .toolbarBackground(Theme.ink, for: .navigationBar)
         }
-        .onAppear { if settings.hasElevenLabsKey { apiKeyField = "••••••••••••" } }
+        .onAppear {
+            if settings.hasElevenLabsKey { apiKeyField = "••••••••••••" }
+            coquiURLField = settings.coquiServerURL ?? ""
+        }
     }
 
     // MARK: ElevenLabs
@@ -67,6 +76,51 @@ struct SettingsView: View {
         .listRowBackground(Theme.inkElevated)
     }
 
+    // MARK: Coqui (local, self-hosted)
+
+    private var coquiSection: some View {
+        Section {
+            TextField("http://192.168.1.50:8787", text: $coquiURLField)
+                .foregroundStyle(Theme.linen)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+
+            HStack {
+                Button(settings.hasCoquiServer ? "Update address" : "Save address") { saveCoquiURL() }
+                    .foregroundStyle(Theme.emerald)
+                    .disabled(coquiURLField.trimmingCharacters(in: .whitespaces).isEmpty)
+                Spacer()
+                if settings.hasCoquiServer {
+                    Button("Remove", role: .destructive) { removeCoquiURL() }
+                }
+            }
+
+            Button {
+                testCoqui()
+            } label: {
+                HStack {
+                    Text("Test connection")
+                    if coquiTesting { ProgressView().tint(Theme.emerald) }
+                }
+            }
+            .foregroundStyle(Theme.emerald)
+            .disabled(!settings.hasCoquiServer || coquiTesting)
+
+            if let coquiTestResult {
+                Text(coquiTestResult)
+                    .font(.footnote)
+                    .foregroundStyle(coquiTestOK ? Theme.emerald : Theme.danger)
+            }
+        } header: {
+            Text("Real voice cloning (Coqui, self-hosted)").foregroundStyle(Theme.linenMuted)
+        } footer: {
+            Text("Optional, free, and fully local. Point this at a Coqui XTTS-v2 engine running on your own PC (see VoxClone/engine) — your voice sample and text stay on your home network and never reach a third-party cloud. The PC and this phone must be on the same Wi-Fi, and the engine must be running.")
+                .foregroundStyle(Theme.linenMuted)
+        }
+        .listRowBackground(Theme.inkElevated)
+    }
+
     // MARK: Defaults
 
     private var defaultsSection: some View {
@@ -74,8 +128,8 @@ struct SettingsView: View {
             Picker("Default engine", selection: engineBinding) {
                 Text("On-device").tag(NarrationEngine.onDevice)
                 Text("ElevenLabs").tag(NarrationEngine.elevenLabs)
+                Text("Coqui (local)").tag(NarrationEngine.coquiLocal)
             }
-            .disabled(!settings.hasElevenLabsKey)
 
             Picker("Default format", selection: $settings.defaultFormat) {
                 Text("AAC (.m4a)").tag(AudioFormat.aac)
@@ -90,8 +144,10 @@ struct SettingsView: View {
 
     private var engineBinding: Binding<NarrationEngine> {
         Binding(
-            get: { settings.hasElevenLabsKey ? settings.defaultEngine : .onDevice },
-            set: { settings.defaultEngine = $0 }
+            get: { settings.isAvailable(settings.defaultEngine) ? settings.defaultEngine : .onDevice },
+            set: { newValue in
+                if settings.isAvailable(newValue) { settings.defaultEngine = newValue }
+            }
         )
     }
 
@@ -135,6 +191,32 @@ struct SettingsView: View {
             testing = false
             testOK = ok
             testResult = ok ? "Key works — cloning is available." : "Key didn't validate. Check it and try again."
+        }
+    }
+
+    private func saveCoquiURL() {
+        settings.coquiServerURL = coquiURLField.trimmingCharacters(in: .whitespaces)
+        coquiTestResult = nil
+    }
+
+    private func removeCoquiURL() {
+        settings.coquiServerURL = nil
+        if settings.defaultEngine == .coquiLocal { settings.defaultEngine = .onDevice }
+        coquiURLField = ""
+        coquiTestResult = nil
+    }
+
+    private func testCoqui() {
+        guard let url = settings.coquiServerURL, !url.isEmpty else { return }
+        coquiTesting = true
+        coquiTestResult = nil
+        Task {
+            let ok = await CoquiVoiceProvider.validate(serverURLString: url)
+            coquiTesting = false
+            coquiTestOK = ok
+            coquiTestResult = ok
+                ? "Connected — cloning is available."
+                : "Couldn't reach the engine. Is it running, and is your phone on the same Wi-Fi?"
         }
     }
 }

@@ -4,6 +4,7 @@ import Foundation
 enum NarrationEngine: String, Codable, CaseIterable, Identifiable {
     case onDevice
     case elevenLabs
+    case coquiLocal
 
     var id: String { rawValue }
 
@@ -11,6 +12,7 @@ enum NarrationEngine: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .onDevice:   return "On-device"
         case .elevenLabs: return "ElevenLabs"
+        case .coquiLocal: return "Coqui (local)"
         }
     }
 
@@ -18,10 +20,11 @@ enum NarrationEngine: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .onDevice:   return "Private · system voice · no network"
         case .elevenLabs: return "Real cloned voice · sends data to ElevenLabs"
+        case .coquiLocal: return "Real cloned voice · stays on your own PC/network"
         }
     }
 
-    var isClone: Bool { self == .elevenLabs }
+    var isClone: Bool { self != .onDevice }
 }
 
 /// Output container for saved narrations.

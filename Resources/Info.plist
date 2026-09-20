@@ -37,6 +37,13 @@
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>iVoice needs your microphone to record a voice sample and let you play it back for confirmation.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>iVoice can send your voice sample and document text to a Coqui voice-cloning engine running on your own computer, over your local Wi-Fi network.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>

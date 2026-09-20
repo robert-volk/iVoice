@@ -102,6 +102,11 @@ final class GenerateViewModel: ObservableObject {
                 storeVoiceID: { profile, voiceID in settings.clonedVoiceIDs[profile.id.uuidString] = voiceID },
                 sampleURL: { library.sampleURL(for: $0) }
             )
+        case .coquiLocal:
+            return CoquiVoiceProvider(
+                serverURLString: settings.coquiServerURL ?? "",
+                sampleURL: { library.sampleURL(for: $0) }
+            )
         }
     }
 

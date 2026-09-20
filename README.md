@@ -21,9 +21,27 @@ True voice cloning is **not possible fully on-device on iOS today**. iVoice has 
   no account, nothing leaves the device.
 - **ElevenLabs (opt-in, real cloning):** paste an ElevenLabs API key in **Settings** to enable genuine
   cloning. Off by default. When enabled, your voice sample and document text are sent to ElevenLabs.
-  The key is stored in the **Keychain**.
+  The key is stored in the **Keychain**. As of 2026 ElevenLabs' free tier no longer includes cloning
+  at all — the cheapest cloning-capable plan is their $11/mo Creator tier.
+- **Coqui (opt-in, real cloning, free & local):** point Settings at a self-hosted **Coqui XTTS-v2**
+  engine running on your own PC (the sibling `../VoxClone/engine` project — a small Python HTTP server
+  wrapping XTTS-v2). No account, no cloud, no per-word cost: your voice sample and text only ever
+  travel to a machine on your own Wi-Fi. Trade-offs: something has to keep that engine running, and
+  without a GPU it's noticeably slower to generate than ElevenLabs.
 
 Your recorded sample is always captured, played back, and stored locally regardless of engine.
+
+### Setting up Coqui cloning
+
+1. On your PC, from `../VoxClone/engine`: `python -m venv .venv`, then
+   `.venv\Scripts\pip install -r requirements.txt` (first run also downloads the ~2GB XTTS-v2 model
+   the first time the server starts).
+2. Start it: `.venv\Scripts\python.exe server.py 8787`. It binds `0.0.0.0` so other devices on your
+   network can reach it — allow it through Windows Firewall if prompted (private networks only).
+3. Find your PC's LAN IP (`ipconfig`, look for the Wi-Fi adapter's IPv4 address, e.g. `192.168.1.50`).
+4. In iVoice → Settings → "Real voice cloning (Coqui, self-hosted)", enter
+   `http://192.168.1.50:8787` and tap **Test connection**. Your phone and PC must be on the same Wi-Fi.
+5. Pick **Coqui (local)** as the engine when generating a narration.
 
 ---
 
@@ -70,7 +88,7 @@ Sources/
   Components/     Waveform, level meter, record button, player, sliders
   Models/         VoiceProfile, Narration, AudioFormat, VoiceOption
   Audio/          Session, recorder, player, speech renderer, exporter, MP3
-  Voice/          VoiceProvider protocol + On-device & ElevenLabs providers
+  Voice/          VoiceProvider protocol + On-device, ElevenLabs & Coqui providers
   Documents/      Document text extraction (PDF/txt/rtf)
   Storage/        Settings (UserDefaults), Keychain, Library store, file paths
   Features/       Onboarding, Create wizard, Library, Settings screens
@@ -78,5 +96,6 @@ Sources/
 
 ## Privacy summary
 
-With **no ElevenLabs key entered**, iVoice makes **no network calls** and **no data leaves the device**.
-Enabling ElevenLabs is the only path that transmits your sample and text off-device.
+With **no ElevenLabs key and no Coqui server address entered**, iVoice makes **no network calls** and
+**no data leaves the device**. Enabling ElevenLabs sends your sample and text to ElevenLabs' cloud.
+Enabling Coqui sends them only to a server on your own local network (never a third party).

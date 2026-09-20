@@ -81,18 +81,21 @@ struct GenerateView: View {
             Text("How to narrate").font(.headline).foregroundStyle(Theme.linen)
             Picker("Engine", selection: $engine) {
                 Text("On-device").tag(NarrationEngine.onDevice)
-                Text("My cloned voice").tag(NarrationEngine.elevenLabs)
+                Text("ElevenLabs").tag(NarrationEngine.elevenLabs)
+                Text("Coqui (local)").tag(NarrationEngine.coquiLocal)
             }
             .pickerStyle(.segmented)
-            .disabled(!settings.hasElevenLabsKey)
+            .onChange(of: engine) { _, newValue in
+                if !settings.isAvailable(newValue) { engine = .onDevice }
+            }
 
             if engine == .onDevice {
-                Text("Plays a neutral system voice on-device — it isn't your recorded voice. To hear your own voice, turn on ElevenLabs cloning in Settings.")
+                Text("Plays a neutral system voice on-device — it isn't your recorded voice. Turn on ElevenLabs or Coqui cloning in Settings to hear your own voice.")
                     .font(.caption).foregroundStyle(Theme.linenMuted)
             }
 
-            if !settings.hasElevenLabsKey {
-                Text("Add an ElevenLabs API key in Settings to narrate in your recorded voice.")
+            if !settings.hasElevenLabsKey && !settings.hasCoquiServer {
+                Text("Add an ElevenLabs API key or a Coqui server address in Settings to narrate in your recorded voice.")
                     .font(.caption).foregroundStyle(Color(hex: 0xE8A13A))
             }
         }
@@ -103,10 +106,21 @@ struct GenerateView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Your cloned voice", systemImage: "person.wave.2.fill")
                 .font(.headline).foregroundStyle(Theme.emerald)
-            Text("iVoice will send \(currentProfileName)'s sample and this document to ElevenLabs to narrate in your cloned voice.")
+            Text(clonedVoiceDescription)
                 .font(.subheadline).foregroundStyle(Theme.linenMuted)
         }
         .studioCard()
+    }
+
+    private var clonedVoiceDescription: String {
+        switch engine {
+        case .elevenLabs:
+            return "iVoice will send \(currentProfileName)'s sample and this document to ElevenLabs to narrate in your cloned voice."
+        case .coquiLocal:
+            return "iVoice will send \(currentProfileName)'s sample and this document to your own Coqui engine at \(settings.coquiServerURL ?? "—") to narrate in your cloned voice. Nothing leaves your network."
+        case .onDevice:
+            return ""
+        }
     }
 
     private var formatPicker: some View {
@@ -118,8 +132,8 @@ struct GenerateView: View {
             }
             .pickerStyle(.segmented)
 
-            if format == .mp3 && engine == .onDevice && !Mp3Encoder.isAvailable {
-                Text("MP3 needs the LAME encoder (see README). On-device narration will save as AAC instead.")
+            if format == .mp3 && engine != .elevenLabs && !Mp3Encoder.isAvailable {
+                Text("MP3 needs the LAME encoder (see README). This engine's narration will save as AAC instead.")
                     .font(.caption).foregroundStyle(Color(hex: 0xE8A13A))
             }
         }
@@ -175,7 +189,7 @@ struct GenerateView: View {
     // MARK: Actions
 
     private func configureDefaults() {
-        engine = settings.hasElevenLabsKey ? settings.defaultEngine : .onDevice
+        engine = settings.isAvailable(settings.defaultEngine) ? settings.defaultEngine : .onDevice
         rate = settings.defaultRate
         pitch = settings.defaultPitch
         format = settings.defaultFormat
@@ -202,8 +216,8 @@ struct GenerateView: View {
         settings.defaultPitch = pitch
         settings.activeProfileID = selectedProfile?.id.uuidString
 
-        // On-device uses a neutral system voice ("" -> default); cloud clones the profile.
-        let effectiveVoiceID = engine == .elevenLabs ? "cloned" : ""
+        // On-device uses a neutral system voice ("" -> default); clone engines use the profile.
+        let effectiveVoiceID = engine.isClone ? "cloned" : ""
         let text = flow.documentText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         Task {
@@ -222,7 +236,7 @@ struct GenerateView: View {
     }
 
     private func save() {
-        let voiceName = engine == .elevenLabs
+        let voiceName = engine.isClone
             ? "\(currentProfileName) (cloned)"
             : "System voice"
         _ = vm.save(documentName: flow.documentName, engine: engine, voiceName: voiceName, library: library)

@@ -32,6 +32,12 @@ final class AppSettings: ObservableObject {
     /// Set whenever the Keychain key changes so views update.
     @Published var hasElevenLabsKey: Bool
 
+    /// Address of a self-hosted Coqui XTTS-v2 engine on the local network, e.g.
+    /// "http://192.168.1.50:8787". Not a secret, just a LAN address.
+    @Published var coquiServerURL: String? {
+        didSet { defaults.set(coquiServerURL, forKey: "coquiServerURL") }
+    }
+
     /// Maps VoiceProfile id -> ElevenLabs cloned voice id (so we don't re-clone).
     @Published var clonedVoiceIDs: [String: String] {
         didSet { defaults.set(clonedVoiceIDs, forKey: "clonedVoiceIDs") }
@@ -47,10 +53,24 @@ final class AppSettings: ObservableObject {
         activeProfileID = defaults.string(forKey: "activeProfileID")
         clonedVoiceIDs = defaults.dictionary(forKey: "clonedVoiceIDs") as? [String: String] ?? [:]
         hasElevenLabsKey = Keychain.loadAPIKey() != nil
+        coquiServerURL = defaults.string(forKey: "coquiServerURL")
 
-        // On-device can't be a "clone", so default engine stays on-device unless a key exists.
-        if defaultEngine == .elevenLabs && !hasElevenLabsKey {
+        // On-device can't be a "clone", so default engine stays on-device unless
+        // the chosen clone engine is actually configured.
+        if !isAvailable(defaultEngine) {
             defaultEngine = .onDevice
+        }
+    }
+
+    var hasCoquiServer: Bool { !(coquiServerURL ?? "").isEmpty }
+
+    /// Whether an engine is currently usable (on-device always is; clone engines
+    /// need a key/server configured first).
+    func isAvailable(_ engine: NarrationEngine) -> Bool {
+        switch engine {
+        case .onDevice:   return true
+        case .elevenLabs: return hasElevenLabsKey
+        case .coquiLocal: return hasCoquiServer
         }
     }
 
